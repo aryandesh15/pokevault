@@ -4,6 +4,7 @@ import FilterSidebar from "./components/FilterSidebar";
 import KpiCard from "./components/KpiCard";
 import PokemonCard from "./components/PokemonCard";
 import PokemonModal from "./components/PokemonModal";
+import BattleArena from "./components/BattleArena";
 import type { Page, Pokemon, PokemonListItem, SortOption } from "./types";
 import "./index.css";
 
@@ -112,67 +113,76 @@ function App() {
         favoritesCount={favoriteIds.length}
       />
 
-      <header className="hero">
-        <p className="eyebrow">Pokémon Card Explorer</p>
-        <h1>
-          Discover, filter, and save your favorite{" "}
-          <span>Pokémon cards.</span>
-        </h1>
-        <p>
-          Browse Pokémon from the PokéAPI, explore stats, filter by type, and
-          build your own favorites collection.
-        </p>
-      </header>
+      {activePage !== "battle" && (
+        <header className="hero">
+          <p className="eyebrow">Pokémon Card Explorer</p>
+          <h1>
+            Discover, filter, and save your favorite{" "}
+            <span>Pokémon cards.</span>
+          </h1>
+          <p>
+            Browse Pokémon from the PokéAPI, explore stats, filter by type, and
+            build your own favorites collection.
+          </p>
+        </header>
+      )}
 
-      <main className="dashboard-layout">
-        <FilterSidebar
-          activePage={activePage}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          selectedType={selectedType}
-          setSelectedType={setSelectedType}
-          sortOption={sortOption}
-          setSortOption={setSortOption}
-          availableTypes={availableTypes}
-          clearFilters={clearFilters}
+      {activePage === "battle" ? (
+        <BattleArena
+          pokemonList={pokemonList}
+          formatPokemonName={formatPokemonName}
         />
+      ) : (
+        <main className="dashboard-layout">
+          <FilterSidebar
+            activePage={activePage}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            selectedType={selectedType}
+            setSelectedType={setSelectedType}
+            sortOption={sortOption}
+            setSortOption={setSortOption}
+            availableTypes={availableTypes}
+            clearFilters={clearFilters}
+          />
 
-        <section className="content-area">
-          <section className="stats-row">
-            <KpiCard value={pokemonList.length} label="Total Loaded" />
-            <KpiCard value={filteredPokemon.length} label="Visible Cards" />
-            <KpiCard value={favoriteIds.length} label="Favorites" />
-          </section>
-
-          <div className="section-heading">
-            <div>
-              <h2>{activePage === "home" ? "All Pokémon" : "Favorite Pokémon"}</h2>
-              <p>
-                {activePage === "home"
-                  ? "Browse all currently loaded Pokémon cards."
-                  : "Your saved Pokémon collection."}
-              </p>
-            </div>
-          </div>
-
-          {filteredPokemon.length === 0 ? (
-            <p className="empty-message">No Pokémon found.</p>
-          ) : (
-            <section className="card-grid">
-              {filteredPokemon.map((pokemon) => (
-                <PokemonCard
-                  key={pokemon.id}
-                  pokemon={pokemon}
-                  isFavorite={favoriteIds.includes(pokemon.id)}
-                  toggleFavorite={toggleFavorite}
-                  openDetails={setSelectedPokemon}
-                  formatPokemonName={formatPokemonName}
-                />
-              ))}
+          <section className="content-area">
+            <section className="stats-row">
+              <KpiCard value={pokemonList.length} label="Total Loaded" />
+              <KpiCard value={filteredPokemon.length} label="Visible Cards" />
+              <KpiCard value={favoriteIds.length} label="Favorites" />
             </section>
-          )}
-        </section>
-      </main>
+
+            <div className="section-heading">
+              <div>
+                <h2>{activePage === "home" ? "All Pokémon" : "Favorite Pokémon"}</h2>
+                <p>
+                  {activePage === "home"
+                    ? "Browse all currently loaded Pokémon cards."
+                    : "Your saved Pokémon collection."}
+                </p>
+              </div>
+            </div>
+
+            {filteredPokemon.length === 0 ? (
+              <p className="empty-message">No Pokémon found.</p>
+            ) : (
+              <section className="card-grid">
+                {filteredPokemon.map((pokemon) => (
+                  <PokemonCard
+                    key={pokemon.id}
+                    pokemon={pokemon}
+                    isFavorite={favoriteIds.includes(pokemon.id)}
+                    toggleFavorite={toggleFavorite}
+                    openDetails={setSelectedPokemon}
+                    formatPokemonName={formatPokemonName}
+                  />
+                ))}
+              </section>
+            )}
+          </section>
+        </main>
+      )}
 
       {selectedPokemon && (
         <PokemonModal

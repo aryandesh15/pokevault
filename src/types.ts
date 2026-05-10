@@ -1,6 +1,8 @@
-export type Page = "home" | "favorites";
+export type Page = "home" | "favorites" | "battle";
 
 export type SortOption = "id-asc" | "id-desc" | "name-asc" | "name-desc";
+
+export type BattleMove = "attack" | "defense" | "special-attack" | "special-defense";
 
 export type PokemonListItem = {
   name: string;

@@ -29,6 +29,13 @@ function Navbar({ activePage, setActivePage, favoritesCount }: NavbarProps) {
           Favorites
           <span className="nav-badge">{favoritesCount}</span>
         </button>
+
+        <button
+          className={activePage === "battle" ? "nav-link active" : "nav-link"}
+          onClick={() => setActivePage("battle")}
+        >
+          Battle
+        </button>
       </div>
     </nav>
   );
