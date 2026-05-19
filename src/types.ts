@@ -1,8 +1,15 @@
-export type Page = "home" | "favorites" | "battle";
+export type Page = "home" | "favorites" | "battle" | "auth";
 
 export type SortOption = "id-asc" | "id-desc" | "name-asc" | "name-desc";
 
 export type BattleMove = "attack" | "defense" | "special-attack" | "special-defense";
+
+export type AppUser = {
+  id: string;
+  name: string;
+  email: string;
+  favoritePokemonIds: number[];
+};
 
 export type PokemonListItem = {
   name: string;

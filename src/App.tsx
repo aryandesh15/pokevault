@@ -5,7 +5,8 @@ import KpiCard from "./components/KpiCard";
 import PokemonCard from "./components/PokemonCard";
 import PokemonModal from "./components/PokemonModal";
 import BattleArena from "./components/BattleArena";
-import type { Page, Pokemon, PokemonListItem, SortOption } from "./types";
+import AuthPage from "./components/AuthPage";
+import type { AppUser, Page, Pokemon, PokemonListItem, SortOption } from "./types";
 import "./index.css";
 
 function App() {
@@ -17,9 +18,24 @@ function App() {
   const [sortOption, setSortOption] = useState<SortOption>("id-asc");
   const [selectedPokemon, setSelectedPokemon] = useState<Pokemon | null>(null);
 
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(() => {
+    const savedUser = localStorage.getItem("pokevaultUser");
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
+  const [authToken, setAuthToken] = useState<string>(() => {
+    return localStorage.getItem("pokevaultToken") || "";
+  });
+
   const [favoriteIds, setFavoriteIds] = useState<number[]>(() => {
-    const savedFavorites = localStorage.getItem("favoritePokemonIds");
-    return savedFavorites ? JSON.parse(savedFavorites) : [];
+    const savedUser = localStorage.getItem("pokevaultUser");
+
+    if (savedUser) {
+      const parsedUser = JSON.parse(savedUser) as AppUser;
+      return parsedUser.favoritePokemonIds || [];
+    }
+
+    return [];
   });
 
   useEffect(() => {
@@ -48,15 +64,88 @@ function App() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("favoritePokemonIds", JSON.stringify(favoriteIds));
-  }, [favoriteIds]);
+    async function fetchFavoritesFromMongo() {
+      if (!authToken || !currentUser) return;
 
-  function toggleFavorite(pokemonId: number) {
-    if (favoriteIds.includes(pokemonId)) {
-      setFavoriteIds(favoriteIds.filter((id) => id !== pokemonId));
-    } else {
-      setFavoriteIds([...favoriteIds, pokemonId]);
+      try {
+        const response = await fetch("/api/favorites", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        });
+
+        if (!response.ok) return;
+
+        const data: { favoritePokemonIds: number[] } = await response.json();
+        setFavoriteIds(data.favoritePokemonIds || []);
+
+        const updatedUser = {
+          ...currentUser,
+          favoritePokemonIds: data.favoritePokemonIds || [],
+        };
+
+        setCurrentUser(updatedUser);
+        localStorage.setItem("pokevaultUser", JSON.stringify(updatedUser));
+      } catch (error) {
+        console.error("Error fetching favorites:", error);
+      }
     }
+
+    fetchFavoritesFromMongo();
+  }, [authToken]);
+
+  async function toggleFavorite(pokemonId: number) {
+    if (!currentUser || !authToken) {
+      alert("Please log in to save favorites to your account.");
+      setActivePage("auth");
+      return;
+    }
+
+    const isAlreadyFavorite = favoriteIds.includes(pokemonId);
+    const method = isAlreadyFavorite ? "DELETE" : "POST";
+
+    try {
+      const response = await fetch("/api/favorites", {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ pokemonId }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.message || "Could not update favorite.");
+        return;
+      }
+
+      const updatedFavoriteIds = data.favoritePokemonIds || [];
+      setFavoriteIds(updatedFavoriteIds);
+
+      const updatedUser = {
+        ...currentUser,
+        favoritePokemonIds: updatedFavoriteIds,
+      };
+
+      setCurrentUser(updatedUser);
+      localStorage.setItem("pokevaultUser", JSON.stringify(updatedUser));
+    } catch (error) {
+      console.error("Favorite error:", error);
+      alert("Something went wrong while updating favorites.");
+    }
+  }
+
+  function handleLogout() {
+    localStorage.removeItem("pokevaultToken");
+    localStorage.removeItem("pokevaultUser");
+
+    setAuthToken("");
+    setCurrentUser(null);
+    setFavoriteIds([]);
+    setActivePage("home");
   }
 
   function formatPokemonName(name: string) {
@@ -111,9 +200,11 @@ function App() {
         activePage={activePage}
         setActivePage={setActivePage}
         favoritesCount={favoriteIds.length}
+        currentUser={currentUser}
+        handleLogout={handleLogout}
       />
 
-      {activePage !== "battle" && (
+      {activePage !== "battle" && activePage !== "auth" && (
         <header className="hero">
           <p className="eyebrow">Pokémon Card Explorer</p>
           <h1>
@@ -127,7 +218,14 @@ function App() {
         </header>
       )}
 
-      {activePage === "battle" ? (
+      {activePage === "auth" ? (
+        <AuthPage
+          setCurrentUser={setCurrentUser}
+          setAuthToken={setAuthToken}
+          setFavoriteIds={setFavoriteIds}
+          setActivePage={setActivePage}
+        />
+      ) : activePage === "battle" ? (
         <BattleArena
           pokemonList={pokemonList}
           formatPokemonName={formatPokemonName}
@@ -159,13 +257,19 @@ function App() {
                 <p>
                   {activePage === "home"
                     ? "Browse all currently loaded Pokémon cards."
-                    : "Your saved Pokémon collection."}
+                    : currentUser
+                      ? "Your saved Pokémon collection."
+                      : "Log in to save and view favorites."}
                 </p>
               </div>
             </div>
 
             {filteredPokemon.length === 0 ? (
-              <p className="empty-message">No Pokémon found.</p>
+              <p className="empty-message">
+                {activePage === "favorites" && !currentUser
+                  ? "Please log in to view saved favorites."
+                  : "No Pokémon found."}
+              </p>
             ) : (
               <section className="card-grid">
                 {filteredPokemon.map((pokemon) => (
